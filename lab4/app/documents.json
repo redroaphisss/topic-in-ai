@@ -1,0 +1,7 @@
+[
+{"title":"Retrieval augmented generation","text":"RAG retrieves relevant passages from a document collection before asking a language model to answer. The answer should use the retrieved evidence and cite its source. RAG does not train the language model on the documents."},
+{"title":"Embeddings and retrieval","text":"Embeddings represent text as numeric vectors. Similarity search ranks document chunks against a question embedding. Cosine similarity compares vector direction. Chunk overlap preserves context at boundaries. This demo retrieves four passages."},
+{"title":"Docker deployment","text":"A Docker image packages application code and dependencies. A registry stores images. A virtual machine pulls an image and runs a container. A persistent volume preserves the embedding cache across container restarts."},
+{"title":"Terraform infrastructure","text":"Terraform declares infrastructure resources and tracks them in state. Terraform plan previews changes, apply creates or updates resources, and destroy removes managed resources. Startup scripts can install Docker, pull an application image, and start the container."},
+{"title":"Remote models and secrets","text":"This demo calls OpenAI remotely for embeddings and answer generation. The VM reads the API key from Google Secret Manager using its service account. Secrets should never be committed to source control or placed in Terraform variables or state."}
+]
