@@ -36,6 +36,12 @@ variable "boot_image" {
   default = "projects/deeplearning-platform-release/global/images/family/pytorch-2-9-cu129-ubuntu-2204-nvidia-580"
 }
 
+variable "enable_gpu" {
+  description = "Attach a T4 GPU; requires eligible paid billing and GPU quota. The remote-model RAG app does not need it."
+  type        = bool
+  default     = false
+}
+
 variable "gpu_type" {
   description = "Accelerator type (must be a GPU — not a TPU)."
   type        = string

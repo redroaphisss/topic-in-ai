@@ -73,7 +73,7 @@ resource "google_compute_firewall" "api" {
   depends_on = [google_project_service.services]
 }
 
-# --- GCE VM with 1× NVIDIA T4 + Docker pull/run on boot ---
+# --- GCE VM with optional NVIDIA T4 + Docker pull/run on boot ---
 
 resource "google_compute_instance" "api" {
   name         = "${var.name_prefix}-t4"
@@ -84,19 +84,22 @@ resource "google_compute_instance" "api" {
   boot_disk {
     initialize_params {
       image = var.boot_image
-      size  = 50
+      size  = 100
       type  = "pd-balanced"
     }
   }
 
-  guest_accelerator {
-    type  = var.gpu_type
-    count = 1
+  dynamic "guest_accelerator" {
+    for_each = var.enable_gpu ? [1] : []
+    content {
+      type  = var.gpu_type
+      count = 1
+    }
   }
 
   # Required for GPU VMs
   scheduling {
-    on_host_maintenance = "TERMINATE"
+    on_host_maintenance = var.enable_gpu ? "TERMINATE" : "MIGRATE"
     automatic_restart   = true
   }
 
@@ -112,7 +115,7 @@ resource "google_compute_instance" "api" {
 
   metadata = {
     # Deep Learning images often install drivers on first boot; give them a minute.
-    install-nvidia-driver = "True"
+    install-nvidia-driver = var.enable_gpu ? "True" : "False"
   }
 
   metadata_startup_script = <<-EOT
@@ -123,6 +126,7 @@ resource "google_compute_instance" "api" {
     IMAGE="${local.image}"
     PORT="${var.api_port}"
 
+    %{if var.enable_gpu~}
     # Wait briefly for GPU drivers on first boot (DLVM / install-nvidia-driver).
     for i in $(seq 1 30); do
       if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
@@ -132,11 +136,13 @@ resource "google_compute_instance" "api" {
       sleep 10
     done
 
+    %{endif~}
     if ! command -v docker >/dev/null 2>&1; then
       curl -fsSL https://get.docker.com | sh
       systemctl enable --now docker
     fi
 
+    %{if var.enable_gpu~}
     # NVIDIA Container Toolkit (no-op if already present on the image).
     if ! docker info 2>/dev/null | grep -qi nvidia; then
       distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
@@ -151,13 +157,14 @@ resource "google_compute_instance" "api" {
       systemctl restart docker
     fi
 
+    %{endif~}
     # Auth to Artifact Registry via the VM service account.
     gcloud auth configure-docker ${var.region}-docker.pkg.dev --quiet
 
     docker pull "$IMAGE"
     docker rm -f l4-api >/dev/null 2>&1 || true
     docker run -d --name l4-api --restart unless-stopped \
-      --gpus all \
+      ${var.enable_gpu ? "--gpus all" : ""} \
       -p "$PORT:$PORT" \
       -e PORT="$PORT" \
       -e OPENAI_SECRET_VERSION="${google_secret_manager_secret.openai.id}/versions/latest" \

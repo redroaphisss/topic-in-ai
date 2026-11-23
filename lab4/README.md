@@ -62,9 +62,9 @@ terraform apply
 terraform output
 ```
 
-Startup installs Docker and NVIDIA Container Toolkit, authenticates to Artifact Registry, pulls the image, and runs Uvicorn with the secret version reference and a persistent `rag-index:/data` volume. Rebuild and push after app changes; if the VM already exists, restart it to rerun startup and pull the tag. Remove the index volume when changing the study passages or embedding model.
+Startup installs Docker (and NVIDIA Container Toolkit when `enable_gpu = true`), authenticates to Artifact Registry, pulls the image, and runs Uvicorn with the secret version reference and a persistent `rag-index:/data` volume. Rebuild and push after app changes; if the VM already exists, restart it to rerun startup and pull the tag. Remove the index volume when changing the study passages or embedding model.
 
-This lab infrastructure still requests a T4 GPU, although the remote-model RAG app does not require a GPU. It also requests an external IP. If `constraints/compute.vmExternalIpAccess` blocks creation, obtain an administrator exception or configure private networking, outbound NAT and IAP access. The PDF's `enable_public_ip=false` example is not implemented in this supplied Terraform. IAP tunneling alone does not provide a public grading URL.
+This infrastructure defaults to a CPU VM because the remote-model RAG app does not require a GPU. Add `enable_gpu = true` to terraform.tfvars only if the assignment requires a T4; this requires eligible paid billing and T4 quota. CPU resources are still billable. The VM requests an external IP. If `constraints/compute.vmExternalIpAccess` blocks creation, obtain an administrator exception or configure private networking, outbound NAT and IAP access. The PDF's `enable_public_ip=false` example is not implemented in this supplied Terraform. IAP tunneling alone does not provide a public grading URL.
 
 After startup, use `terraform output -raw external_ip` to find the VM. Open `http://EXTERNAL_IP:8080/` and repeat the checks above using that address. `/healthz` verifies the HTTP server; `/readyz` verifies key and embedding-index initialization. Test an actual question to verify generation. Empty questions return 422; provider failures return 503; the demo allows ten questions per minute.
 
